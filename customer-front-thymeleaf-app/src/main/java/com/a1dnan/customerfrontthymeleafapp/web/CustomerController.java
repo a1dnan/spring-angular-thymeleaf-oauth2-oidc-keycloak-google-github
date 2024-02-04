@@ -4,6 +4,7 @@ package com.a1dnan.customerfrontthymeleafapp.web;
 import com.a1dnan.customerfrontthymeleafapp.entities.Customer;
 import com.a1dnan.customerfrontthymeleafapp.model.Product;
 import com.a1dnan.customerfrontthymeleafapp.repo.CustomerRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,8 +29,8 @@ import java.util.Map;
 public class CustomerController {
     private CustomerRepository customerRepository;
     private ClientRegistrationRepository clientRegistrationRepository;
-//    @Value("${inventory.service.base.uri}")
-//    private String inventoryServiceBaseUri;
+    @Value("${inventory.service.base.uri}")
+    private String inventoryServiceBaseUri;
 
     public CustomerController(CustomerRepository customerRepository, ClientRegistrationRepository clientRegistrationRepository) {
         this.customerRepository = customerRepository;
@@ -46,12 +47,13 @@ public class CustomerController {
 
     @GetMapping("/products")
     public String products(Model model) {
+        try {
             SecurityContext context = SecurityContextHolder.getContext();
             Authentication authentication = context.getAuthentication();
             OAuth2AuthenticationToken oAuth2AuthenticationToken = (OAuth2AuthenticationToken) authentication;
             DefaultOidcUser oidcUser = (DefaultOidcUser) oAuth2AuthenticationToken.getPrincipal();
             String jwtTokenValue = oidcUser.getIdToken().getTokenValue();
-            RestClient restClient = RestClient.create("http://localhost:8098");
+            RestClient restClient = RestClient.create(inventoryServiceBaseUri);
             List<Product> products = restClient.get()
                     .uri("/products")
                     .headers(httpHeaders -> httpHeaders.set(HttpHeaders.AUTHORIZATION, "Bearer " + jwtTokenValue))
@@ -60,6 +62,10 @@ public class CustomerController {
                     });
             model.addAttribute("products", products);
             return "products";
+        }
+        catch (Exception e){
+            return "redirect:/notAutorized";
+        }
     }
 
     @GetMapping("/auth")
